@@ -6,10 +6,10 @@
 #include "win64_art.h"
 #include "art.cpp"
 
-global_variable b32 GlobalRunning;
-global_variable b32 GlobalPause;
-global_variable win64_offscreen_buffer GlobalBackbuffer;
-global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
+global b32 GlobalRunning;
+global b32 GlobalPause;
+global win64_offscreen_buffer GlobalBackbuffer;
+global WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 
 internal void
 ToggleFullscreen
@@ -171,8 +171,6 @@ Win64DisplayBufferInWindow(win64_offscreen_buffer *Buffer,
 {
 	(void)WindowWidth;
 	(void)WindowHeight;
-	
-	PatBlt(DeviceContext, 0, 0, WindowWidth, WindowHeight, BLACKNESS);
 	
 	s32 StretchSuccess = StretchDIBits(DeviceContext,
 																		 /* Dest */ 0, 0, Buffer->Width, Buffer->Height,

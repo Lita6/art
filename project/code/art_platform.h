@@ -28,6 +28,10 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 	
+	// NOTE: This is needed for the linker to use floats
+	//int _fltused;
+#define _fltused
+	
 	typedef int8_t s8;
 	typedef int16_t s16;
 	typedef int32_t s32;
@@ -39,6 +43,8 @@ extern "C" {
 	typedef uint64_t u64;
 	
 	typedef s32 b32;
+	typedef float r32;
+	typedef double r64;
 	typedef size_t memory_index;
 	
 	typedef struct
@@ -48,7 +54,7 @@ extern "C" {
 	
 #define internal static
 #define local_persist static
-#define global_variable static
+#define global static
 	
 #define Pi32 3.141159265359f
 	
