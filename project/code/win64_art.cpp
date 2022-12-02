@@ -169,11 +169,14 @@ internal void
 Win64DisplayBufferInWindow(win64_offscreen_buffer *Buffer,
                            HDC DeviceContext, int WindowWidth, int WindowHeight)
 {
-	(void)WindowWidth;
-	(void)WindowHeight;
+	
+	PatBlt(DeviceContext, 0, 0, WindowWidth, WindowHeight, BLACKNESS);
+	
+	s32 xOffset = (WindowWidth - Buffer->Width) / 2;
+	s32 yOffset = (WindowHeight - Buffer->Height) / 2;;
 	
 	s32 StretchSuccess = StretchDIBits(DeviceContext,
-																		 /* Dest */ 0, 0, Buffer->Width, Buffer->Height,
+																		 /* Dest */ xOffset, yOffset, Buffer->Width, Buffer->Height,
 																		 /* Source */ 0, 0, Buffer->Width, Buffer->Height,
 																		 Buffer->Memory, &Buffer->Info,
 																		 DIB_RGB_COLORS, SRCCOPY);
@@ -245,19 +248,7 @@ Win64MainWindowCallback(HWND Window,
 }
 
 internal void
-Win64ProcessKeyboardMessage(game_button_state *NewState, b32 IsDown)
-{
-	if(NewState->EndedDown != IsDown)
-	{
-		NewState->EndedDown = IsDown;
-		++NewState->HalfTransitionCount;
-	}
-}
-
-
-
-internal void
-Win64ProcessPendingMessages(game_controller_input *KeyboardController)
+Win64ProcessPendingMessages()
 {
 	MSG Message;
 	while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
@@ -281,43 +272,43 @@ Win64ProcessPendingMessages(game_controller_input *KeyboardController)
 				{
 					if(VKCode == 'W')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->MoveUp, IsDown);
+						
 					}
 					else if(VKCode == 'A')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->MoveLeft, IsDown);
+						
 					}
 					else if(VKCode == 'S')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->MoveDown, IsDown);
+						
 					}
 					else if(VKCode == 'D')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->MoveRight, IsDown);
+						
 					}
 					else if(VKCode == 'Q')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->LeftShoulder, IsDown);
+						
 					}
 					else if(VKCode == 'E')
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->RightShoulder, IsDown);
+						
 					}
 					else if(VKCode == VK_UP)
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->ActionUp, IsDown);
+						
 					}
 					else if(VKCode == VK_LEFT)
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->ActionLeft, IsDown);
+						
 					}
 					else if(VKCode == VK_DOWN)
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->ActionDown, IsDown);
+						
 					}
 					else if(VKCode == VK_RIGHT)
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->ActionRight, IsDown);
+						
 					}
 					else if(VKCode == VK_ESCAPE)
 					{
@@ -328,7 +319,7 @@ Win64ProcessPendingMessages(game_controller_input *KeyboardController)
 					}
 					else if(VKCode == VK_SPACE)
 					{
-						Win64ProcessKeyboardMessage(&KeyboardController->Start, IsDown);
+						
 					}
 					
 					if(IsDown)
@@ -365,7 +356,7 @@ WinMainCRTStartup
 	
 	win64_state Win64State = {};
 	
-	Win64ResizeDIBSection(&GlobalBackbuffer, /*Width*/1920, /*Height*/1080);
+	Win64ResizeDIBSection(&GlobalBackbuffer, /*Width*/1000, /*Height*/1000);
 	
 	WNDCLASSA WindowClass = {};
 	WindowClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -409,40 +400,16 @@ WinMainCRTStartup
 			
 			if(GameMemory.PermanentStorage && GameMemory.TransientStorage)
 			{
-				
-				game_input Input[2] = {};
-				game_input *NewInput = &Input[0];
-				game_input *OldInput = &Input[1];
-				
+				ToggleFullscreen(Window);
 				while(GlobalRunning)
 				{
 					
-					game_controller_input *OldKeyboardController = &OldInput->Controller;
-					game_controller_input *NewKeyboardController = &NewInput->Controller;
-					*NewKeyboardController = {};
-					NewKeyboardController->IsConnected = true;
-					for(int ButtonIndex = 0; ButtonIndex < ArrayCount(NewKeyboardController->Buttons); ++ButtonIndex)
-					{
-						NewKeyboardController->Buttons[ButtonIndex].EndedDown = OldKeyboardController->Buttons[ButtonIndex].EndedDown;
-					}
-					
-					Win64ProcessPendingMessages(NewKeyboardController);
+					Win64ProcessPendingMessages();
 					if(!GlobalPause)
 					{
-						POINT MouseP;
-						GetCursorPos(&MouseP);
-						ScreenToClient(Window, &MouseP);
-						NewInput->MouseX = MouseP.x;
-						NewInput->MouseY = MouseP.y;
-						NewInput->MouseZ = 0; // Mousewheel not supported.
-						
-						Win64ProcessKeyboardMessage(&NewInput->MouseButtons[0], GetKeyState(VK_LBUTTON) & (1 << 15));
-						Win64ProcessKeyboardMessage(&NewInput->MouseButtons[1], GetKeyState(VK_MBUTTON) & (1 << 15));
-						Win64ProcessKeyboardMessage(&NewInput->MouseButtons[2], GetKeyState(VK_RBUTTON) & (1 << 15));
-						Win64ProcessKeyboardMessage(&NewInput->MouseButtons[3], GetKeyState(VK_XBUTTON1) & (1 << 15));
-						Win64ProcessKeyboardMessage(&NewInput->MouseButtons[4], GetKeyState(VK_XBUTTON2) & (1 << 15));
-						
-						thread_context Thread = {};
+						//POINT MouseP;
+						//GetCursorPos(&MouseP);
+						//ScreenToClient(Window, &MouseP);
 						
 						game_offscreen_buffer Buffer = {};
 						Buffer.Memory = GlobalBackbuffer.Memory;
@@ -452,17 +419,13 @@ WinMainCRTStartup
 						Buffer.BytesPerPixel = GlobalBackbuffer.BytesPerPixel;
 						Buffer.EndOfBuffer = (u8 *)Buffer.Memory + (Buffer.Pitch * Buffer.Height);
 						
-						GameUpdateAndRender(&Thread, &GameMemory, NewInput, &Buffer);
+						GameUpdateAndRender(&GameMemory, &Buffer);
 						
 						win64_window_dimension Dimension = Win64GetWindowDimension(Window);
 						
 						HDC DeviceContext = GetDC(Window);
 						Win64DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, Dimension.Width, Dimension.Height);
 						ReleaseDC(Window, DeviceContext);
-						
-						game_input *Temp = NewInput;
-						NewInput = OldInput;
-						OldInput = Temp;
 						
 					}
 				}

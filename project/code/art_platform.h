@@ -29,8 +29,7 @@ extern "C" {
 #include <stddef.h>
 	
 	// NOTE: This is needed for the linker to use floats
-	//int _fltused;
-#define _fltused
+	int _fltused;
 	
 	typedef int8_t s8;
 	typedef int16_t s16;
@@ -42,7 +41,18 @@ extern "C" {
 	typedef uint32_t u32;
 	typedef uint64_t u64;
 	
+#define MAX_U8 0xFF
+#define MAX_U16 0XFFFF
+#define MAX_U32 0xFFFFFFFF
+#define MAX_U64 0XFFFFFFFFFFFFFFFF
+	
+	typedef s8 b8;
+	typedef s16 b16;
 	typedef s32 b32;
+	
+#define TRUE 1
+#define FALSE 0
+	
 	typedef float r32;
 	typedef double r64;
 	typedef size_t memory_index;
@@ -78,6 +88,24 @@ extern "C" {
 		return(Result);
 	}
 	
+	inline u8
+		TruncS32ToU8
+	(s32 value)
+	{
+		u8 result = 0;
+		
+		if(value > MAX_U8)
+		{
+			result = MAX_U8;
+		}
+		else if(value < 0)
+		{
+			result = 0;
+		}
+		
+		return(result);
+	}
+	
 	typedef struct
 	{
 		u32 ContentsSize;
@@ -93,51 +121,6 @@ extern "C" {
 		int BytesPerPixel;
 		u8 *EndOfBuffer;
 	}game_offscreen_buffer;
-	
-	typedef struct
-	{
-		s32 HalfTransitionCount;
-		b32 EndedDown;
-	}game_button_state;
-	
-	typedef struct
-	{
-		b32 IsConnected;
-		
-		union
-		{
-			game_button_state Buttons[12];
-			struct
-			{
-				game_button_state MoveUp;
-				game_button_state MoveDown;
-				game_button_state MoveLeft;
-				game_button_state MoveRight;
-				
-				game_button_state ActionUp;
-				game_button_state ActionDown;
-				game_button_state ActionLeft;
-				game_button_state ActionRight;
-				
-				game_button_state LeftShoulder;
-				game_button_state RightShoulder;
-				
-				game_button_state Back;
-				game_button_state Start;
-				
-				// NOTE: All buttons must be added above this line
-				
-				game_button_state Terminator;
-			};
-		};
-	}game_controller_input;
-	
-	typedef struct
-	{
-		game_button_state MouseButtons[5];
-		s32 MouseX, MouseY, MouseZ;
-		game_controller_input Controller;
-	}game_input;
 	
 	typedef struct
 	{
