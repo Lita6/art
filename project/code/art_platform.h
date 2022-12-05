@@ -55,6 +55,7 @@ extern "C" {
 	
 	typedef float r32;
 	typedef double r64;
+	
 	typedef size_t memory_index;
 	
 	typedef struct
@@ -89,10 +90,10 @@ extern "C" {
 	}
 	
 	inline u8
-		TruncS32ToU8
+		ClampS32ToU8
 	(s32 value)
 	{
-		u8 result = 0;
+		s32 result = value;
 		
 		if(value > MAX_U8)
 		{
@@ -103,7 +104,7 @@ extern "C" {
 			result = 0;
 		}
 		
-		return(result);
+		return((u8)result);
 	}
 	
 	typedef struct
@@ -133,6 +134,35 @@ extern "C" {
 		void *TransientStorage;
 		
 	}game_memory;
+	
+#if 0	
+	struct Float
+	{
+		u32 base : 23;
+		u32 exponent : 8;
+		u32 sign : 1;
+	};
+	
+	union uFloat
+	{
+		Float spliced;
+		r32 f;
+	};
+#endif
+	
+	r32
+		Power
+	(r32 base, u32 exponent)
+	{
+		r32 result = 1.0;
+		
+		for(u32 i = 0; i < exponent; i++)
+		{
+			result *= base;
+		}
+		
+		return(result);
+	}
 	
 #ifdef __cplusplus
 }

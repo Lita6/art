@@ -196,7 +196,7 @@ DotProduct
 }
 
 r32
-DotProduct
+Dot
 (v3 a, v3 b)
 {
 	v3 temp = a * b;
@@ -250,7 +250,7 @@ r32
 v3Length
 (v3 a)
 {
-	r32 result = DotProduct(a, a);
+	r32 result = Dot(a, a);
 	result = sqrtr32(result);
 	result = absr32(result);
 	return(result);

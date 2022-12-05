@@ -31,20 +31,20 @@ make_color
 
 Color
 operator*
-(s32 intensity, Color color)
+(r32 intensity, Color color)
 {
 	
 	Color result = {};
-	result.red = TruncS32ToU8(((s32)color.red * intensity));
-	result.green = TruncS32ToU8(((s32)color.green * intensity));
-	result.blue = TruncS32ToU8(((s32)color.blue * intensity));
+	result.red = ClampS32ToU8((s32)((r32)color.red * intensity));
+	result.green = ClampS32ToU8((s32)((r32)color.green * intensity));
+	result.blue = ClampS32ToU8((s32)((r32)color.blue * intensity));
 	result.alpha = color.alpha;
 	return(result);
 }
 
 Color
 operator*
-(Color color, s32 intensity)
+(Color color, r32 intensity)
 {
 	Color result = intensity*color;
 	return(result);
@@ -57,9 +57,9 @@ operator+
 	
 	Color result = {};
 	result.alpha = (u8)(((s32)a.alpha + (s32)b.alpha) / 2);
-	result.red = TruncS32ToU8(((s32)a.red + (s32)b.red));
-	result.green = TruncS32ToU8(((s32)a.green + (s32)b.green));
-	result.blue = TruncS32ToU8(((s32)a.blue + (s32)b.blue));
+	result.red = ClampS32ToU8(((s32)a.red + (s32)b.red));
+	result.green = ClampS32ToU8(((s32)a.green + (s32)b.green));
+	result.blue = ClampS32ToU8(((s32)a.blue + (s32)b.blue));
 	return(result);
 }
 
