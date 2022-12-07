@@ -63,6 +63,23 @@ operator+
 	return(result);
 }
 
+b32
+operator==
+(Color a, Color b)
+{
+	
+	b32 result = TRUE;
+	if((a.alpha != b.alpha) ||
+		 (a.red != b.red) ||
+		 (a.green != b.green) ||
+		 (a.blue != b.blue))
+	{
+		result = FALSE;
+	}
+	
+	return(result);
+}
+
 void
 PutPixel
 (game_offscreen_buffer *Buffer, s32 x, s32 y, Color output)
@@ -177,13 +194,6 @@ DrawRect
 	}
 }
 
-struct Line
-{
-	v2 start;
-	v2 end;
-	u32 color;
-};
-
 struct memory_arena
 {
 	memory_index Size;
@@ -200,12 +210,14 @@ InitializeArena
 	Arena->Used = 0;
 }
 
+#define PushVar(Arena, type) (type *)PushSize_(Arena, sizeof(type))
 #define PushStruct(Arena, type) (type *)PushSize_(Arena, sizeof(type))
 #define PushArray(Arena, Count, type) (type *)PushSize_(Arena, (Count * sizeof(type)))
 void *
 PushSize_
 (memory_arena *Arena, memory_index Size)
 {
+	Assert(Size != 0);
 	Assert((Arena->Used + Size) <= Arena->Size);
 	void *Result = Arena->Base + Arena->Used;
 	Arena->Used += Size;
