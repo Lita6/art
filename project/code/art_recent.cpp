@@ -27,7 +27,17 @@ struct Reflection
 {
 	Color color;
 	r32 reflective;
+	v3 vector_reflection;
+	v3 intersection;
 };
+
+v3
+ReflectRay
+(v3 a, v3 b)
+{
+	v3 result = (2.0 * b * Dot(b, a)) - a;
+	return(result);
+}
 
 r32
 ClosestIntersection
@@ -67,11 +77,12 @@ ClosestIntersection
 
 r32
 ComputeLighting
-(Light *lights, s32 LightCount, Sphere *spheres, s32 SphereCount, v3 Point, r32 MaxViewDistance, v3 NormalizedPoint, s32 specular, v3 vector)
+(Light *lights, s32 LightCount, Sphere *spheres, s32 SphereCount, v3 Point, v3 SurfaceNormal, v3 vector, s32 specular, r32 MaxViewDistance)
 {
-	r32 result = 0;
+	r32 result = 0.0;
 	v3 LightVector = {};
 	r32 tMax = 0.0;
+	Assert(LightCount != 0);
 	
 	for(s32 i = 0; i < LightCount; i++)
 	{
@@ -94,37 +105,82 @@ ComputeLighting
 			{
 				LightVector = lights[i].vector;
 			}
-		}
-		
-		Sphere *ClosestSphere = {};
-		// NOTE: Shadow check
-		ClosestIntersection(spheres, SphereCount, Point, LightVector, (r32)0.001, tMax, &ClosestSphere);
-		
-		if(ClosestSphere != 0)
-		{
-			continue;
-		}
-		ClosestSphere = 0;
-		
-		// NOTE: Diffuse lighting
-		r32 nDotL = Dot(NormalizedPoint, LightVector);
-		if(nDotL > 0.0)
-		{
-			result += lights[i].intensity * (nDotL / (v3Length(NormalizedPoint) * v3Length(LightVector)));
-		}
-		
-		// NOTE: Shiny lighting
-		if(specular >= 0)
-		{
-			v3 R = 2.0 * NormalizedPoint * Dot(NormalizedPoint, LightVector) - LightVector;
-			r32 rDotV = Dot(R, vector);
-			if(rDotV > 0)
+			
+			Sphere *ClosestSphere = {};
+			// NOTE: Shadow check
+			ClosestIntersection(spheres, SphereCount, Point, LightVector, (r32)0.001, tMax, &ClosestSphere);
+			
+			if(ClosestSphere != 0)
 			{
-				
-				result += lights[i].intensity * (Power((rDotV / (v3Length(R) * v3Length(vector))), (u32)specular));
-				
+				continue;
+			}
+			ClosestSphere = 0;
+			
+			// NOTE: Diffuse lighting
+			r32 nDotL = Dot(SurfaceNormal, LightVector);
+			if(nDotL > 0.0)
+			{
+				result += lights[i].intensity * (nDotL / (v3Length(SurfaceNormal) * v3Length(LightVector)));
+			}
+			
+			// NOTE: Shiny lighting
+			if(specular != -1)
+			{
+				v3 R = ReflectRay(LightVector, SurfaceNormal);
+				r32 rDotV = Dot(R, vector);
+				if(rDotV > 0)
+				{
+					
+					result += lights[i].intensity * (Power((rDotV / (v3Length(R) * v3Length(vector))), (u32)specular));
+				}
 			}
 		}
+	}
+	
+	return(result);
+}
+
+b32
+IsReflective
+(r32 a)
+{
+	b32 result = (a > (r32)0.001) ? TRUE : FALSE;
+	return(result);
+}
+
+Reflection
+TraceRay
+(Sphere *spheres, s32 SphereCount, Light *lights, s32 LightCount, v3 origin, v3 direction, r32 tMin, Sphere sky)
+{
+	r32 tMax = sky.radius;
+	Reflection result = {};
+	
+	Sphere *ClosestSphere = 0;
+	r32 direction_factor = ClosestIntersection(spheres, SphereCount, origin, direction, tMin, tMax, &ClosestSphere);
+	
+	if(ClosestSphere == 0)
+	{
+		//just return the background color
+		result.color = sky.color;
+		result.reflective = sky.reflective;
+	}
+	else
+	{
+		
+		result.intersection = origin + (direction_factor * direction);
+		v3 surface_normal = result.intersection - ClosestSphere->center;
+		surface_normal = surface_normal / v3Length(surface_normal);
+		v3 reverse_direction = -1.0 * direction;
+		
+		result.color = ClosestSphere->color * 
+			ComputeLighting(lights, LightCount, spheres, SphereCount, result.intersection, surface_normal, reverse_direction, ClosestSphere->specular, tMax);
+		result.reflective = ClosestSphere->reflective;
+		
+		if(IsReflective(result.reflective))
+		{
+			result.vector_reflection = ReflectRay(reverse_direction, surface_normal);
+		}
+		
 	}
 	
 	return(result);
@@ -144,6 +200,7 @@ GameUpdateAndRender
 	memory_arena TransientMemory = {};
 	InitializeArena(&TransientMemory, (memory_index)Memory->TransientStorageSize, (u8*)Memory->TransientStorage);
 	
+	// Opaque Colors
 	Color Black = make_color(0.0, 0.0, 0.0);
 	(void)Black;
 	Color Red = make_color(255.0, 0.0, 0.0);
@@ -158,8 +215,6 @@ GameUpdateAndRender
 	(void)White;
 	Color SkyBlue = make_color(135.0, 205.0, 235.0);
 	(void)SkyBlue;
-	
-	Color background = Black;
 	
 	// NOTE: Clear to black
 	for(s32 y = ScreenMinY; y < ScreenMaxY; y++)
@@ -220,7 +275,11 @@ GameUpdateAndRender
 	
 	// TODO: Specular reflections stopped working for some reason.
 	
-	r32 MaxViewDistance = 100.0;
+	Sphere sky = {};
+	sky.radius = 10000.0;
+	sky.color = Black;
+	sky.specular = -1;
+	sky.reflective = 0.0;
 	for(s32 y = ScreenMinY; y < ScreenMaxY; y++)
 	{
 		for(s32 x = ScreenMinX; x < ScreenMaxX; x++)
@@ -231,51 +290,33 @@ GameUpdateAndRender
 			viewport.y = (r32)y * (ViewHeight/(r32)Buffer->Height);
 			viewport.z = ViewDistanceFromCamera;
 			
-			Color drawColor = background;
-			s32 specular = -1;
-			v3 SphereCenter = {};
-			Sphere *ClosestSphere = 0;
+			Color drawColor = sky.color;
+			v3 SphereCenter = sky.center;
 			Reflection reflections[3] = {};
 			s32 ReflectionCount = 0;
 			v3 origin = camera;
 			v3 direction = viewport;
-			r32 tMin = 1.0;
-			for(s32 i = 0; i < 3; i++)
+			r32 tMin = ViewDistanceFromCamera;
+			
+			for(s32 i = 0; i < 2; i++)
 			{
-				r32 closest_point = ClosestIntersection(spheres, SphereCount, origin, direction, tMin, MaxViewDistance, &ClosestSphere);
-				if(ClosestSphere != 0)
+				reflections[i] = TraceRay(spheres, SphereCount, lights, LightCount, origin, direction, tMin, sky);
+				ReflectionCount++;
+				
+				if(reflections[0].intersection.z > 5.0)
 				{
-					reflections[i].color = ClosestSphere->color;
-					ReflectionCount++;
-					specular = ClosestSphere->specular;
-					SphereCenter = ClosestSphere->center;
-					reflections[i].reflective = ClosestSphere->reflective;
-				}
-				else
-				{
-					reflections[i].color = background;
-					ReflectionCount++;
-					specular = -1;
-					SphereCenter = {};
-					break;
+					s32 a = 0;
+					a = 5*8;
 				}
 				
-				v3 Point = origin + (closest_point * direction);
-				v3 NormalizedPoint = Point - SphereCenter;
-				NormalizedPoint = NormalizedPoint / v3Length(NormalizedPoint);
-				v3 reverse = -1 * direction;
-				
-				reflections[i].color = reflections[i].color * ComputeLighting(lights, LightCount, spheres, SphereCount, Point, MaxViewDistance, NormalizedPoint, specular, reverse);
-				
-				if(reflections[i].reflective <= 0.0)
+				if(!IsReflective(reflections[i].reflective))
 				{
 					break;
 				}
 				
-				origin = Point;
-				direction = 2.0 * NormalizedPoint * Dot(NormalizedPoint, reverse) - reverse;
+				origin = reflections[i].intersection;
+				direction = reflections[i].vector_reflection;
 				tMin = (r32)0.001;
-				
 			}
 			
 			if(ReflectionCount > 1)
@@ -284,7 +325,14 @@ GameUpdateAndRender
 				reflections[(ReflectionCount - 1)].reflective = 0.0;
 				for(s32 i = (ReflectionCount - 1); i >= 0; i--)
 				{
-					reflected_color = reflections[i].color * ((r32)1.0 - reflections[i].reflective) + reflected_color * reflections[i].reflective;
+					if(IsReflective(reflections[i].reflective))
+					{
+						reflected_color = reflections[i].color * ((r32)1.0 - reflections[i].reflective) + reflected_color * reflections[i].reflective;
+					}
+					else
+					{
+						reflected_color = reflections[i].color;
+					}
 				}
 				
 				drawColor = reflected_color;

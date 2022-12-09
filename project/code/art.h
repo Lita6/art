@@ -11,18 +11,31 @@ global s32 ScreenMaxY;
 
 struct Color
 {
-	u8 alpha;
-	u8 red;
-	u8 green;
-	u8 blue;
+	r32 red;
+	r32 green;
+	r32 blue;
 };
+
+r32
+ClampColor
+(r32 a)
+{
+	if(a < 0.0)
+	{
+		a = 0.0;
+	}
+	else if(a > 255.0)
+	{
+		a = 255.0;
+	}
+	return(a);
+}
 
 Color
 make_color
-(u8 alpha, u8 red, u8 green, u8 blue)
+(r32 red, r32 green, r32 blue)
 {
 	Color result = {};
-	result.alpha = alpha;
 	result.red = red;
 	result.green = green;
 	result.blue = blue;
@@ -35,10 +48,9 @@ operator*
 {
 	
 	Color result = {};
-	result.red = ClampS32ToU8((s32)((r32)color.red * intensity));
-	result.green = ClampS32ToU8((s32)((r32)color.green * intensity));
-	result.blue = ClampS32ToU8((s32)((r32)color.blue * intensity));
-	result.alpha = color.alpha;
+	result.red = ClampColor((color.red * intensity));
+	result.green = ClampColor((color.green * intensity));
+	result.blue = ClampColor((color.blue * intensity));
 	return(result);
 }
 
@@ -56,7 +68,6 @@ operator+
 {
 	
 	Color result = {};
-	result.alpha = (u8)(((s32)a.alpha + (s32)b.alpha) / 2);
 	result.red = ClampS32ToU8(((s32)a.red + (s32)b.red));
 	result.green = ClampS32ToU8(((s32)a.green + (s32)b.green));
 	result.blue = ClampS32ToU8(((s32)a.blue + (s32)b.blue));
@@ -69,8 +80,7 @@ operator==
 {
 	
 	b32 result = TRUE;
-	if((a.alpha != b.alpha) ||
-		 (a.red != b.red) ||
+	if((a.red != b.red) ||
 		 (a.green != b.green) ||
 		 (a.blue != b.blue))
 	{
@@ -84,7 +94,7 @@ void
 PutPixel
 (game_offscreen_buffer *Buffer, s32 x, s32 y, Color output)
 {
-	u32 color = (u32)(output.alpha << 24) | (u32)(output.red << 16) | (u32)(output.green << 8) | (u32)(output.blue << 0);
+	u32 color = (u32)((s32)output.red << 16) | (u32)((s32)output.green << 8) | (u32)((s32)output.blue << 0);
 	
 	Assert((x >= ScreenMinX) && (x < ScreenMaxX));
 	Assert((y >= ScreenMinY) && (y < ScreenMaxY));
@@ -179,16 +189,16 @@ DrawRect
 	if(rectangle.outline.thickness > 0)
 	{
 		
-		Rect bottom = rect(minX, minY, maxX, (minY + (s32)rectangle.outline.thickness), 1, rectangle.outline.color, 0, make_color(0,0,0,0));
+		Rect bottom = rect(minX, minY, maxX, (minY + (s32)rectangle.outline.thickness), 1, rectangle.outline.color, 0, make_color(0,0,0));
 		DrawRect(Buffer, bottom);
 		
-		Rect left = rect(minX, minY, (minX + (s32)rectangle.outline.thickness), maxY, 1, rectangle.outline.color, 0, make_color(0,0,0,0));
+		Rect left = rect(minX, minY, (minX + (s32)rectangle.outline.thickness), maxY, 1, rectangle.outline.color, 0, make_color(0,0,0));
 		DrawRect(Buffer, left);
 		
-		Rect top = rect(minX, maxY, maxX, (maxY - (s32)rectangle.outline.thickness), 1, rectangle.outline.color, 0, make_color(0,0,0,0));
+		Rect top = rect(minX, maxY, maxX, (maxY - (s32)rectangle.outline.thickness), 1, rectangle.outline.color, 0, make_color(0,0,0));
 		DrawRect(Buffer, top);
 		
-		Rect right = rect(maxX, maxY, (maxX - (s32)rectangle.outline.thickness), minY, 1, rectangle.outline.color, 0, make_color(0,0,0,0));
+		Rect right = rect(maxX, maxY, (maxX - (s32)rectangle.outline.thickness), minY, 1, rectangle.outline.color, 0, make_color(0,0,0));
 		DrawRect(Buffer, right);
 		
 	}
