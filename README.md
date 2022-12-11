@@ -1,2 +1,1 @@
-Program for creating digital art.
- 
+Program for creating digital art. Just went through chapters 1-4 of Computer Graphics from Scratch.
